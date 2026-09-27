@@ -1,0 +1,65 @@
+[project]
+name = "agent-intelligence-layer"
+version = "0.1.0"
+description = "Model-agnostic agent operating system for executing markdown-defined skills"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Mohamed Omar", email = "madreescolab@gmail.com"}]
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "langchain-ollama>=0.2.0",
+    "litellm>=1.50.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.3.0",
+    "chromadb>=0.5.0",
+    "sqlite-utils>=3.37.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "httpx>=0.27.0",
+    "tenacity>=8.3.0",
+]
+optional-dependencies = {
+    "dev" = [
+        "pytest>=8.2.0",
+        "pytest-asyncio>=0.23.0",
+        "ruff>=0.5.0",
+        "mypy>=1.10.0",
+    ],
+    "ui" = [
+        "streamlit>=1.37.0",
+        "fastapi>=0.112.0",
+        "uvicorn>=0.30.0",
+    ],
+    "langfuse" = [
+        "langfuse>=2.15.0",
+    ],
+    "mcp" = [
+        "mcp>=1.0.0",
+    ],
+}
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agent_intelligence*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
