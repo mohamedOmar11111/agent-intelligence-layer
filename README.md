@@ -51,9 +51,11 @@ The Agent Intelligence Layer (AIL) sits **above any LLM** and turns your markdow
 # 1. Install
 pip install -e ".[ui]"
 
-# 2. Configure (uses Ollama by default)
-ail config set model.provider ollama
-ail config set model.name qwen2.5:7b
+# 2. Configure your LLM (any provider via LiteLLM)
+# Ollama (local, free):    ail config set model.provider ollama && ail config set model.name qwen2.5:7b
+# OpenAI:                  ail config set model.provider openai && ail config set model.name gpt-4o
+# Anthropic:               ail config set model.provider anthropic && ail config set model.name claude-3-5-sonnet
+# Azure/OpenAI-compatible: ail config set model.provider litellm && ail config set model.name <your-model>
 
 # 3. Point to your skills repo
 ail config set skills.path ../growth-architect-store
@@ -64,6 +66,8 @@ ail brief create --file briefs/my-business.yaml --version v1.0
 # 5. Run a goal
 ail run "Build Q4 outbound campaign for ICP: B2B SaaS" --budget 50 --brief v1.0
 ```
+
+> **Use any LLM backend** — Configure once, works with any coding agent (Cursor, Windsurf, VS Code, CLI, etc.)
 
 ## CLI Commands
 
@@ -163,9 +167,23 @@ added_date: "2026-09-27"
 Create `.env` file:
 
 ```env
-# Model
+# Model (choose one)
+# Ollama (local)
 AIL_MODEL_PROVIDER=ollama
 AIL_MODEL_NAME=qwen2.5:7b
+# OpenAI
+# AIL_MODEL_PROVIDER=openai
+# AIL_MODEL_NAME=gpt-4o
+# AIL_MODEL_API_KEY=sk-...
+# Anthropic
+# AIL_MODEL_PROVIDER=anthropic
+# AIL_MODEL_NAME=claude-3-5-sonnet-20241022
+# AIL_MODEL_API_KEY=sk-ant-...
+# Any OpenAI-compatible (vLLM, LM Studio, etc.)
+# AIL_MODEL_PROVIDER=litellm
+# AIL_MODEL_NAME=your-model
+# AIL_MODEL_BASE_URL=http://localhost:8000/v1
+
 AIL_MODEL_TEMPERATURE=0.1
 
 # Skills
@@ -184,6 +202,8 @@ AIL_HUMAN_GATE_UI_PORT=8501
 AIL_OBS_LOG_LEVEL=INFO
 AIL_OBS_LANGFUSE_ENABLED=false
 ```
+
+**Works with any coding agent** — Cursor, Windsurf, VS Code, Zed, CLI, or custom scripts
 
 ## Running the Marketing Vertical
 
@@ -210,6 +230,8 @@ pytest
 # Lint
 ruff check .
 mypy src/
+
+# Works with any coding agent — Cursor, Windsurf, VS Code, Zed, CLI
 ```
 
 ## License
