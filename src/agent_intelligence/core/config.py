@@ -7,8 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ModelConfig(BaseSettings):
-    """Model provider configuration."""
-    provider: Literal["ollama", "openai", "anthropic", "litellm", "azure", "bedrock"] = "ollama"
+    """Model provider configuration — supports 100+ providers via LiteLLM."""
+    provider: Literal[
+        "ollama", "openai", "anthropic", "gemini",
+        "azure", "bedrock", "vertex_ai", "litellm",
+        "local", "lmstudio", "vllm", "localai"
+    ] = "ollama"
     name: str = "qwen2.5:7b"
     base_url: Optional[str] = None
     api_key: Optional[str] = None
@@ -16,7 +20,14 @@ class ModelConfig(BaseSettings):
     max_tokens: int = 4096
     reasoning_effort: Optional[Literal["low", "medium", "high"]] = None
 
-    model_config = SettingsConfigDict(env_prefix="AIL_MODEL_")
+    # Azure-specific
+    api_version: Optional[str] = None
+
+    # Vertex AI-specific
+    project: Optional[str] = None
+    location: Optional[str] = None
+
+    model_config = SettingsConfigDict(env_prefix="AIL_MODEL_", extra="ignore")
 
 
 class MemoryConfig(BaseSettings):
@@ -32,7 +43,10 @@ class MemoryConfig(BaseSettings):
 class SkillsConfig(BaseSettings):
     """Skills repository configuration."""
     path: Path = Path("../growth-architect-store")
-    departments: list[str] = ["developers", "designers", "marketing", "social-media", "finance", "small-business", "legal", "gpt6-astra-business-team"]
+    departments: list[str] = [
+        "developers", "designers", "marketing", "social-media",
+        "finance", "small-business", "legal", "gpt6-astra-business-team"
+    ]
     auto_reload: bool = True
 
     model_config = SettingsConfigDict(env_prefix="AIL_SKILLS_")

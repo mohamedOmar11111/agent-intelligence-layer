@@ -1,4 +1,4 @@
-"""Model adapter - unified interface for any LLM via LiteLLM."""
+"""Model adapter - unified interface for any LLM via LiteLLM (100+ providers)."""
 
 import os
 import time
@@ -24,30 +24,76 @@ class ModelResponse:
 
 
 class ModelAdapter:
-    """Unified model interface via LiteLLM."""
+    """Unified model interface via LiteLLM — supports 100+ providers."""
 
     def __init__(self):
         self.settings = get_settings()
         self._configure_litellm()
 
     def _configure_litellm(self):
-        """Configure LiteLLM with settings."""
+        """Configure LiteLLM with settings for all supported providers."""
         litellm.drop_params = True
         litellm.set_verbose = self.settings.debug
 
-        # Set default model
         model_config = self.settings.model
+
+        # Provider-specific environment setup
         if model_config.provider == "ollama":
             os.environ["OLLAMA_API_BASE"] = model_config.base_url or "http://localhost:11434"
+            if model_config.api_key:
+                os.environ["OLLAMA_API_KEY"] = model_config.api_key
+
         elif model_config.provider == "openai":
             if model_config.api_key:
                 os.environ["OPENAI_API_KEY"] = model_config.api_key
+            if model_config.base_url:
+                os.environ["OPENAI_API_BASE"] = model_config.base_url
+
         elif model_config.provider == "anthropic":
             if model_config.api_key:
                 os.environ["ANTHROPIC_API_KEY"] = model_config.api_key
 
+        elif model_config.provider == "gemini":
+            if model_config.api_key:
+                os.environ["GEMINI_API_KEY"] = model_config.api_key
+            if model_config.base_url:
+                os.environ["GEMINI_API_BASE"] = model_config.base_url
+
+        elif model_config.provider == "azure":
+            if model_config.api_key:
+                os.environ["AZURE_API_KEY"] = model_config.api_key
+            if model_config.base_url:
+                os.environ["AZURE_API_BASE"] = model_config.base_url
+            if hasattr(model_config, 'api_version') and model_config.api_version:
+                os.environ["AZURE_API_VERSION"] = model_config.api_version
+
+        elif model_config.provider == "bedrock":
+            # Uses AWS credentials from ~/.aws/credentials or env vars
+            # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+            pass
+
+        elif model_config.provider == "vertex_ai":
+            # Uses GCP credentials from gcloud auth or GOOGLE_APPLICATION_CREDENTIALS
+            if hasattr(model_config, 'project') and model_config.project:
+                os.environ["VERTEXAI_PROJECT"] = model_config.project
+            if hasattr(model_config, 'location') and model_config.location:
+                os.environ["VERTEXAI_LOCATION"] = model_config.location
+
+        elif model_config.provider == "litellm":
+            if model_config.api_key:
+                os.environ["LITELLM_API_KEY"] = model_config.api_key
+            if model_config.base_url:
+                os.environ["LITELLM_API_BASE"] = model_config.base_url
+
+        elif model_config.provider in ("local", "lmstudio", "vllm", "localai"):
+            # Local OpenAI-compatible servers
+            if model_config.base_url:
+                os.environ["OPENAI_API_BASE"] = model_config.base_url
+            if model_config.api_key:
+                os.environ["OPENAI_API_KEY"] = model_config.api_key
+
     def _build_model_string(self, skill: Optional[Skill] = None) -> str:
-        """Build LiteLLM model string."""
+        """Build LiteLLM model string for any provider."""
         model_config = self.settings.model
 
         # Skill can override model preference
@@ -57,16 +103,24 @@ class ModelAdapter:
         provider = model_config.provider
         name = model_config.name
 
-        if provider == "ollama":
-            return f"ollama/{name}"
-        elif provider == "openai":
-            return name
-        elif provider == "anthropic":
-            return name
-        elif provider == "litellm":
-            return name  # Full model string expected
-        else:
-            return f"{provider}/{name}"
+        # LiteLLM provider prefixes
+        provider_prefixes = {
+            "ollama": "ollama/",
+            "openai": "",
+            "anthropic": "anthropic/",
+            "gemini": "gemini/",
+            "azure": "azure/",
+            "bedrock": "bedrock/",
+            "vertex_ai": "vertex_ai/",
+            "litellm": "",
+            "local": "",
+            "lmstudio": "",
+            "vllm": "",
+            "localai": "",
+        }
+
+        prefix = provider_prefixes.get(provider, f"{provider}/")
+        return f"{prefix}{name}"
 
     def _build_params(self, skill: Optional[Skill] = None) -> dict:
         """Build completion parameters."""
@@ -93,7 +147,7 @@ class ModelAdapter:
         model: Optional[str] = None,
         **kwargs
     ) -> ModelResponse:
-        """Synchronous completion."""
+        """Synchronous completion via LiteLLM."""
         start = time.perf_counter()
 
         model_str = model or self._build_model_string(skill)
@@ -109,11 +163,9 @@ class ModelAdapter:
 
             latency = time.perf_counter() - start
 
-            # Extract usage
             usage = response.usage if hasattr(response, 'usage') else None
             tokens = usage.total_tokens if usage else 0
 
-            # Calculate cost via LiteLLM
             cost = 0.0
             try:
                 cost = litellm.completion_cost(completion_response=response)
@@ -130,7 +182,7 @@ class ModelAdapter:
             )
 
         except Exception as e:
-            # Fallback: try with basic params
+            # Fallback with minimal params
             try:
                 response = completion(
                     model=model_str,
@@ -157,7 +209,7 @@ class ModelAdapter:
         model: Optional[str] = None,
         **kwargs
     ) -> ModelResponse:
-        """Asynchronous completion."""
+        """Asynchronous completion via LiteLLM."""
         start = time.perf_counter()
 
         model_str = model or self._build_model_string(skill)
@@ -190,16 +242,15 @@ class ModelAdapter:
         )
 
     def estimate_cost(self, messages: list[dict], skill: Optional[Skill] = None) -> float:
-        """Estimate cost for a completion."""
+        """Estimate cost for a completion via LiteLLM."""
         model_str = self._build_model_string(skill)
         try:
-            # Rough estimation based on input tokens
             input_text = " ".join(m.get("content", "") for m in messages)
-            input_tokens = len(input_text) / 4  # rough
+            input_tokens = len(input_text) / 4
             return litellm.completion_cost(
                 model=model_str,
                 prompt_tokens=int(input_tokens),
-                completion_tokens=500  # estimate
+                completion_tokens=500
             )
         except Exception:
             return 0.0
